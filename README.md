@@ -98,6 +98,28 @@ const result = await extract(url, {
 });
 ```
 
+## 批量下载（batch.js）
+
+仓库内置 `batch.js` 批量下载脚本，基于 `extract()` 封装了限速、重试和断点续传：
+
+```bash
+# 1. 准备 URL 列表（每行一个链接，# 开头为注释）
+vim urls.txt
+
+# 2. 运行
+node batch.js urls.txt              # 基础用法，输出 Markdown 到 ~/Downloads/wechat/
+node batch.js urls.txt --images     # 正文图片同时下载到本地并改写为相对路径
+node batch.js urls.txt --delay=5000 # 调整每篇基础间隔（默认 3000ms，另加 0-2000ms 随机抖动）
+```
+
+行为说明：
+
+- **串行下载 + 随机间隔**：避免触发微信频率限制
+- **失败重试**：网络类失败自动重试 2 次（指数退避）；已删除、链接过期、违规等不可重试错误直接记入 `failed.log` 跳过
+- **频率限制处理**：遇到 `1004 访问过于频繁` 自动暂停 15 分钟后续跑，最多等待 2 次，仍被限流则中止并保留进度
+- **断点续传**：已完成的 URL 记录在 `~/Downloads/wechat/done.log`，重跑自动跳过
+- **输出结构**：按公众号分目录保存 Markdown（含 frontmatter 元数据），图片本地化时存入同名 `.assets/` 目录
+
 ## 响应格式
 
 ### 成功响应
@@ -194,6 +216,7 @@ wechat-article-extractor-skill/
 ├── scripts/
 │   ├── extract.js    # 核心提取逻辑
 │   └── errors.js     # 错误代码定义
+├── batch.js          # 批量下载脚本（限速/重试/断点续传/图片本地化）
 ├── SKILL.md          # Skill 定义文件（Claude Skill 格式，包含触发条件和描述）
 ├── package.json      # 项目配置
 └── README.md         # 本文件
@@ -206,6 +229,7 @@ wechat-article-extractor-skill/
 - `request-promise` - HTTP 请求
 - `qs` - 查询字符串解析
 - `lodash.unescape` - HTML 实体解码
+- `turndown` - HTML 转 Markdown（batch.js 使用）
 
 ## 注意事项
 
